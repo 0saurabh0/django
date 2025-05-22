@@ -1,0 +1,117 @@
+name: PR Quality Check
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+permissions:
+  pull-requests: write
+  contents: read
+
+jobs:
+  quality_check:
+    name: "Basic PR Quality Check"
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Check PR quality"
+        uses: actions/github-script@v7
+        with:
+          script: |
+            try {
+              console.log("Starting PR quality check");
+              
+              // More robust test environment detection
+              let isTestEnv = true;
+              try {
+                // In a real environment, this will work
+                isTestEnv = !context.payload.pull_request || 
+                           process.env.ACT === 'true' ||
+                           !context.repo.owner ||
+                           !context.repo.repo;
+              } catch (e) {
+                console.log("Error detecting environment, assuming test mode:", e);
+                isTestEnv = true;
+              }
+              
+              console.log("Environment:", isTestEnv ? "TEST" : "PRODUCTION");
+              
+              // Get PR details
+              let title, body, prNumber;
+              
+              if (isTestEnv) {
+                console.log("Running in test environment, using payload data directly");
+                const pr = context.payload.pull_request || {};
+                title = pr.title || 'Test PR title';
+                body = pr.body || 'Test PR body';
+                prNumber = pr.number || 1;
+              } else {
+                // In real GitHub environment, get actual PR data
+                prNumber = context.issue.number;
+                const pr = context.payload.pull_request;
+                title = pr.title || '';
+                body = pr.body || '';
+              }
+              
+              console.log(`PR #${prNumber}: "${title}"`);
+              
+              // Perform checks
+              const hasTicket = /#[0-9]+/.test(title);
+              const tutorialPattern = /test|learning|first contribution|demo|first pr|tutorial|first patch|getting started|first time|new contributor|toast/i;
+              const isTutorial = tutorialPattern.test(title) || tutorialPattern.test(body);
+              const isDjangoTutorial = /writing.*first patch|intro\/contributing|first django|django.*tutorial/i.test(body);
+              
+              // Only flag if issues found
+              if (!hasTicket || isTutorial || isDjangoTutorial) {
+                console.log("Quality issues detected");
+                let comment = "## PR Quality Check ⚠️\n\nThis PR may need attention:\n";
+                
+                if (!hasTicket) comment += "- Missing Trac ticket reference in PR title\n";
+                if (isTutorial || isDjangoTutorial) {
+                  comment += "- PR appears to be a test or learning exercise\n";
+                  
+                  if (isDjangoTutorial) {
+                    comment += "- Appears to be following the 'Writing your first patch to Django' tutorial\n";
+                  }
+                }
+                
+                comment += "\nPlease ensure this is a real contribution with a Trac ticket reference.";
+                
+                // Log findings regardless of environment
+                console.log("Would add label: possibly-tutorial-pr");
+                console.log("Would add comment:", comment);
+                
+                // Skip API calls in test environment
+                if (!isTestEnv) {
+                  try {
+                    // Add label
+                    await github.rest.issues.addLabels({
+                      owner: context.repo.owner,
+                      repo: context.repo.repo,
+                      issue_number: prNumber,
+                      labels: ['possibly-tutorial-pr']
+                    });
+                    
+                    // Add comment
+                    await github.rest.issues.createComment({
+                      owner: context.repo.owner,
+                      repo: context.repo.repo,
+                      issue_number: prNumber,
+                      body: comment
+                    });
+                  } catch (apiError) {
+                    console.log("Failed to make API calls:", apiError);
+                    // Don't fail the job for API errors
+                  }
+                }
+              } else {
+                console.log("No quality issues detected - PR looks good!");
+              }
+            } catch (error) {
+              console.log("Error details:", error);
+              // Don't fail the job for errors during testing
+              if (process.env.ACT !== 'true') {
+                core.setFailed(`PR quality check failed: ${error.message}`);
+              } else {
+                console.log("Error occurred, but continuing in test environment");
+              }
+            }
