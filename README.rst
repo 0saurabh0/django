@@ -51,3 +51,4 @@ Django's development depends on your contributions.
 
 If you depend on Django, remember to support the Django Software Foundation: https://www.djangoproject.com/fundraising/
 # Test comment
+# Test comment 2
