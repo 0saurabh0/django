@@ -73,6 +73,15 @@ Minor features
   function rotates a geometry by a specified angle around the origin or a
   specified point.
 
+* The new :attr:`.BaseGeometryWidget.base_layer` attribute allows specifying a
+  JavaScript map base layer, enabling customization of map tile providers.
+
+* :lookup:`coveredby` and :lookup:`isvalid` lookups,
+  :class:`~django.contrib.gis.db.models.Collect` aggregation, and
+  :class:`~django.contrib.gis.db.models.functions.GeoHash` and
+  :class:`~django.contrib.gis.db.models.functions.IsValid` database functions
+  are now supported on MariaDB 12.0.1+.
+
 :mod:`django.contrib.messages`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -81,7 +90,9 @@ Minor features
 :mod:`django.contrib.postgres`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-* ...
+* Model fields, indexes, and constraints from :mod:`django.contrib.postgres`
+  now include system checks to verify that ``django.contrib.postgres`` is an
+  installed app.
 
 :mod:`django.contrib.redirects`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -332,6 +343,18 @@ Miscellaneous
   refactored to use Python's :py:class:`email.message.Message` for parsing.
   Input headers exceeding 10000 characters will now raise :exc:`ValueError`.
 
+* Widgets from :mod:`django.contrib.gis.forms.widgets` now render without
+  inline JavaScript in templates. If you have customized any geometry widgets
+  or their templates, you may need to :ref:`update them
+  <geometry-widgets-customization>` to match the new layout.
+
+* Message levels ``messages.DEBUG`` and ``messages.INFO`` now have distinct
+  icons and CSS styling in the admin. Previously, these used the same icon and
+  styling as the ``messages.SUCCESS`` level. Since
+  :meth:`.ModelAdmin.message_user` uses the ``messages.INFO`` level by default,
+  set the level to ``messages.SUCCESS`` to retain the previous icon and
+  styling.
+
 .. _deprecated-features-6.0:
 
 Features deprecated in 6.0
@@ -364,6 +387,8 @@ Miscellaneous
 * Support for the ``orphans`` argument being larger than or equal to the
   ``per_page`` argument of :class:`django.core.paginator.Paginator` and
   :class:`django.core.paginator.AsyncPaginator` is deprecated.
+
+* Using a percent sign in a column alias or annotation is deprecated.
 
 Features removed in 6.0
 =======================
