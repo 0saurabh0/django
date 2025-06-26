@@ -1,112 +1,237 @@
 import os
 import re
 import sys
+from enum import Enum
 from github import Github
+from dataclasses import dataclass
+from typing import List
 
-def initialize_github():
-    """Initialize GitHub client and return it along with environment information."""
+
+class IssueType(Enum):
+    TUTORIAL = "tutorial"
+
+
+class Severity(Enum):
+    HIGH = "high"
+    MEDIUM = "medium"
+    LOW = "low"
+
+
+class Location(Enum):
+    TITLE = "title"
+    BODY = "body"
+
+
+class Confidence(Enum):
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+
+
+@dataclass
+class PatternMatch:
+    """Stores information about a matched pattern"""
+
+    pattern: str
+    matched_text: str
+    location: Location
+    context: str  # surrounding text
+
+
+@dataclass
+class QualityIssue:
+    """Represents a quality issue found in a PR"""
+
+    type: IssueType
+    severity: Severity
+    message: str
+    matches: List[PatternMatch]
+
+    def should_auto_close(self) -> bool:
+        """Determine if this issue warrants auto-closing"""
+        if self.type is not IssueType.TUTORIAL:
+            return False
+
+        # Need at least one match to consider auto-closing
+        if not self.matches:
+            return False
+
+        # Auto-close if multiple matches
+        if len(self.matches) > 1:
+            return True
+
+        # Auto-close if single match is high-confidence pattern
+        pattern = self.matches[0].pattern
+        return pattern in ["99999", "toast"]
+
+
+class Action:
+    """Base class for all actions"""
+
+    def act(self, pr):
+        pass
+
+
+class NoAction(Action):
+    def act(self, pr):
+        print("No quality issues detected - PR looks good!")
+
+
+@dataclass
+class CommentOnPR(Action):
+    comment: str
+
+    def act(self, pr):
+        print("Quality issues detected")
+        pr.create_issue_comment(self.comment)
+
+
+class ClosePR(Action):
+    def act(self, pr):
+        pr.edit(state="closed")
+
+
+def generate_actions(issues: List[QualityIssue]) -> List[Action]:
+    """Generate a list of actions to take based on issues found"""
+    if not issues:
+        return [NoAction()]
+
+    actions = []
+
+    # Build comment content
+    comment = "## PR Quality Check ⚠️\n\nThis PR may need attention:\n"
+    should_close = False
+
+    for issue in issues:
+        comment += f"\n### {issue.message} (Severity: {issue.severity.value})\n"
+
+        # Add match details for transparency
+        if issue.matches:
+            comment += "Matches found:\n"
+            for match in issue.matches:
+                comment += f"- In {match.location.value}: `{match.context}`\n"
+
+        # Determine if we should close based on issue severity and matches
+        if issue.should_auto_close():
+            should_close = True
+
+    if should_close:
+        comment += (
+            "\n⚠️ This PR will be automatically closed based on the detected patterns."
+        )
+        actions.append(ClosePR())
+
+    actions.append(CommentOnPR(comment))
+    return actions
+
+
+def take_actions(actions: List[Action], pr):
+    """Execute all actions in sequence"""
+    for action in actions:
+        try:
+            action.act(pr)
+        except Exception as e:
+            print(f"Failed to execute action {type(action).__name__}: {str(e)}")
+
+
+def get_context(
+    text: str, match_start: int, match_end: int, context_chars: int = 40
+) -> str:
+    """Get surrounding context for a match"""
+    start = max(0, match_start - context_chars)
+    end = min(len(text), match_end + context_chars)
+    return text[start:end].strip()
+
+
+def check_pr_quality(title: str, body: str) -> List[QualityIssue]:
+    """Perform quality checks and return structured issues"""
+    issues = []
+
+    # Tutorial patterns with confidence levels
+    tutorial_patterns = {
+        r"99999": Confidence.HIGH,
+        r"toast": Confidence.HIGH,
+        r"learning": Confidence.MEDIUM,
+        r"tutorial": Confidence.MEDIUM,
+        r"getting started": Confidence.MEDIUM,
+        r"\btest\b": Confidence.LOW,
+    }
+
+    tutorial_matches = []
+    for pattern, confidence in tutorial_patterns.items():
+        # Check title - only need one match per pattern
+        title_match = re.search(pattern, title, re.I)
+        if title_match:
+            tutorial_matches.append(
+                PatternMatch(
+                    pattern=pattern,
+                    matched_text=title_match.group(),
+                    location=Location.TITLE,
+                    context=title,
+                )
+            )
+
+        # Check body, but only for high-confidence patterns
+        if confidence == Confidence.HIGH and body:
+            for match in re.finditer(pattern, body, re.I):
+                tutorial_matches.append(
+                    PatternMatch(
+                        pattern=pattern,
+                        matched_text=match.group(),
+                        location=Location.BODY,
+                        context=get_context(body, match.start(), match.end()),
+                    )
+                )
+
+    if tutorial_matches:
+        issues.append(
+            QualityIssue(
+                type=IssueType.TUTORIAL,
+                severity=Severity.MEDIUM,
+                message="PR appears to be a test or learning exercise",
+                matches=tutorial_matches,
+            )
+        )
+
+    return issues
+
+
+def main():
+    print("Starting PR quality check")
+
     # Get GitHub token from environment
     github_token = os.environ.get("GITHUB_TOKEN")
     if not github_token:
         print("Error: GITHUB_TOKEN environment variable is required")
         sys.exit(1)
-    
-    # Initialize GitHub client
-    g = Github(github_token)
-    
+
     # Get repository and PR information from environment
     github_repository = os.environ.get("GITHUB_REPOSITORY")
     pr_number = os.environ.get("PR_NUMBER")
-    
-    # Determine environment
-    is_test_env = os.environ.get("ACT") == "true" or not pr_number or not github_repository
-    print(f"Environment: {'TEST' if is_test_env else 'PRODUCTION'}")
-    
-    return g, github_repository, pr_number, is_test_env
 
-def get_pr_data(g, github_repository, pr_number, is_test_env):
-    """Get PR title and body either from API or test environment."""
-    if is_test_env:
-        # If testing with specific PR data
-        title = os.environ.get("PR_TITLE", "Test PR title")
-        body = os.environ.get("PR_BODY", "Test PR body")
-        pr_number = os.environ.get("PR_NUMBER", "1")
-        pr = None
-    else:
-        # Get real PR data from GitHub API
-        repo = g.get_repo(github_repository)
-        pr = repo.get_pull(int(pr_number))
-        title = pr.title
-        body = pr.body if pr.body else ""
-    
-    print(f"PR #{pr_number}: \"{title}\"")
-    return pr, title, body, pr_number
+    if not github_repository or not pr_number:
+        print(
+            "Error: GITHUB_REPOSITORY and PR_NUMBER environment variables are required"
+        )
+        sys.exit(1)
 
-def check_pr_quality(title, body):
-    """Perform quality checks and return issues found."""
-    issues = []
-    
-    # Check for ticket reference
-    has_ticket = bool(re.search(r'#[0-9]+', title))
-    if not has_ticket:
-        issues.append("Missing Trac ticket reference in PR title")
-    
-    # Check for tutorial patterns
-    tutorial_pattern = r'test|learning|first contribution|demo|first pr|tutorial|first patch|getting started|first time|new contributor|toast'
-    is_tutorial = bool(re.search(tutorial_pattern, title, re.I) or re.search(tutorial_pattern, body, re.I))
-    is_django_tutorial = bool(re.search(r'writing.*first patch|intro\/contributing|first django|django.*tutorial', body, re.I))
-    
-    if is_tutorial:
-        issues.append("PR appears to be a test or learning exercise")
-        
-    if is_django_tutorial:
-        issues.append("Appears to be following the 'Writing your first patch to Django' tutorial")
-    
-    return issues
+    # Initialize GitHub client and get PR data
+    g = Github(github_token)
+    repo = g.get_repo(github_repository)
+    pr = repo.get_pull(int(pr_number))
 
-def take_action_on_issues(pr, issues, is_test_env):
-    """Add labels and comments to PR based on issues found."""
-    if not issues:
-        print("No quality issues detected - PR looks good!")
-        return
-    
-    print("Quality issues detected")
-    comment = "## PR Quality Check ⚠️\n\nThis PR may need attention:\n"
-    
-    for issue in issues:
-        comment += f"- {issue}\n"
-    
-    comment += "\nPlease ensure this is a real contribution with a Trac ticket reference."
-    
-    # Log findings regardless of environment
-    print("Would add label: possibly-tutorial-pr")
-    print(f"Would add comment: {comment}")
-    
-    # Skip API calls in test environment
-    if not is_test_env:
-        try:
-            # Add label
-            pr.add_to_labels("possibly-tutorial-pr")
-            
-            # Add comment
-            pr.create_issue_comment(comment)
-        except Exception as e:
-            print(f"Failed to make API calls: {str(e)}")
+    title = pr.title
+    body = pr.body if pr.body else ""
 
-def main():
-    print("Starting PR quality check")
-    
-    # Initialize GitHub and get environment information
-    g, github_repository, pr_number, is_test_env = initialize_github()
-    
-    # Get PR data
-    pr, title, body, pr_number = get_pr_data(g, github_repository, pr_number, is_test_env)
-    
+    print(f'PR #{pr_number}: "{title}"')
+
     # Check PR quality
     issues = check_pr_quality(title, body)
-    
-    # Take action if issues found
-    take_action_on_issues(pr, issues, is_test_env)
+
+    # Generate and take actions
+    actions = generate_actions(issues)
+    take_actions(actions, pr)
+
 
 if __name__ == "__main__":
     main()
