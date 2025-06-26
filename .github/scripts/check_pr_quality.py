@@ -9,8 +9,6 @@ from typing import List
 
 class IssueType(Enum):
     TUTORIAL = "tutorial"
-    MISSING_TICKET = "missing_ticket"
-    DJANGO_TUTORIAL = "django_tutorial"
 
 
 class Severity(Enum):
@@ -51,7 +49,7 @@ class QualityIssue:
 
     def should_auto_close(self) -> bool:
         """Determine if this issue warrants auto-closing"""
-        if self.type != IssueType.TUTORIAL:
+        if self.type is not IssueType.TUTORIAL:
             return False
 
         # Need at least one match to consider auto-closing
@@ -64,7 +62,7 @@ class QualityIssue:
 
         # Auto-close if single match is high-confidence pattern
         pattern = self.matches[0].pattern
-        return pattern in ["first contribution", "first pr", "learning to"]
+        return pattern in ["99999", "toast"]
 
 
 class Action:
@@ -77,14 +75,6 @@ class Action:
 class NoAction(Action):
     def act(self, pr):
         print("No quality issues detected - PR looks good!")
-
-
-@dataclass
-class LabelPR(Action):
-    label: str
-
-    def act(self, pr):
-        pr.add_to_labels(self.label)
 
 
 @dataclass
@@ -106,7 +96,7 @@ def generate_actions(issues: List[QualityIssue]) -> List[Action]:
     if not issues:
         return [NoAction()]
 
-    actions = [LabelPR("possibly-tutorial-pr")]
+    actions = []
 
     # Build comment content
     comment = "## PR Quality Check ⚠️\n\nThis PR may need attention:\n"
@@ -157,28 +147,14 @@ def check_pr_quality(title: str, body: str) -> List[QualityIssue]:
     """Perform quality checks and return structured issues"""
     issues = []
 
-    # Check for ticket reference
-    ticket_match = re.search(r"#[0-9]+", title)
-    if not ticket_match:
-        issues.append(
-            QualityIssue(
-                type=IssueType.MISSING_TICKET,
-                severity=Severity.HIGH,
-                message="Missing Trac ticket reference in PR title",
-                matches=[],
-            )
-        )
-
     # Tutorial patterns with confidence levels
     tutorial_patterns = {
-        r"\btest\b": Confidence.LOW,
-        r"learning": Confidence.MEDIUM,
-        r"first contribution": Confidence.HIGH,
-        r"first pr": Confidence.HIGH,
-        r"tutorial": Confidence.MEDIUM,
+        r"99999": Confidence.HIGH,
         r"toast": Confidence.HIGH,
-        r"first patch": Confidence.HIGH,
+        r"learning": Confidence.MEDIUM,
+        r"tutorial": Confidence.MEDIUM,
         r"getting started": Confidence.MEDIUM,
+        r"\btest\b": Confidence.LOW,
     }
 
     tutorial_matches = []
