@@ -6,7 +6,6 @@ from typing import List
 
 class Confidence(Enum):
     LOW = "low"
-    MEDIUM = "medium"
     HIGH = "high"
 
 
@@ -33,9 +32,9 @@ class PatternAnalyzer:
     TUTORIAL_PATTERNS = {
         r"99999": Confidence.HIGH,
         r"toast": Confidence.HIGH,
-        r"learning": Confidence.MEDIUM,
-        r"tutorial": Confidence.MEDIUM,
-        r"getting started": Confidence.MEDIUM,
+        r"learning": Confidence.LOW,
+        r"tutorial": Confidence.LOW,
+        r"getting started": Confidence.LOW,
         r"\btest\b": Confidence.LOW,
     }
 
@@ -72,15 +71,6 @@ class PatternAnalyzer:
                     )
 
         return matches
-
-    @classmethod
-    def should_label_as_tutorial(cls, matches: List[PatternMatch]) -> bool:
-        """Determine if PR should be labeled as tutorial based on matches"""
-        if not matches:
-            return False
-
-        # Label if we have any matches (GitHub Actions will handle this)
-        return True
 
     @classmethod
     def should_auto_close(cls, matches: List[PatternMatch]) -> bool:
@@ -125,8 +115,7 @@ if __name__ == "__main__":
         matches = PatternAnalyzer.analyze_pr(title, body)
 
         result = {
-            "has_matches": len(matches) > 0,
-            "should_label": PatternAnalyzer.should_label_as_tutorial(matches),
+            "has_matches": bool(matches),
             "should_auto_close": PatternAnalyzer.should_auto_close(matches),
             "matches": [
                 {

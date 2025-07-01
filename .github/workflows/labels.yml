@@ -80,7 +80,7 @@ jobs:
             const analysisJson = execSync(`python .github/scripts/pattern_analyzer.py analyze "${title}" "${body}"`).toString();
             const analysis = JSON.parse(analysisJson);
 
-            const hasMatch = analysis.should_label;
+            const hasMatch = analysis.has_matches;
             const shouldAutoClose = analysis.should_auto_close;
             const labels = context.payload.pull_request.labels.map(l => l.name);
             const owner = context.repo.owner;

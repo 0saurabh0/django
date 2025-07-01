@@ -20,7 +20,7 @@ class TestPatternAnalyzer(unittest.TestCase):
         self.assertEqual(len(matches), 1)
         self.assertEqual(matches[0].pattern, "learning")
         self.assertEqual(matches[0].location, Location.TITLE)
-        self.assertEqual(matches[0].confidence, Confidence.MEDIUM)
+        self.assertEqual(matches[0].confidence, Confidence.LOW)
         self.assertEqual(matches[0].matched_text, "learning")
 
     def test_analyze_pr_high_confidence_in_body(self):
@@ -78,7 +78,7 @@ class TestPatternAnalyzer(unittest.TestCase):
         self.assertEqual(len(matches), 1)
         self.assertEqual(matches[0].pattern, "getting started")
         self.assertEqual(matches[0].location, Location.TITLE)
-        self.assertEqual(matches[0].confidence, Confidence.MEDIUM)
+        self.assertEqual(matches[0].confidence, Confidence.LOW)
 
     def test_case_insensitive_matching(self):
         matches = PatternAnalyzer.analyze_pr("My LEARNING experience", "")
@@ -94,25 +94,13 @@ class TestPatternAnalyzer(unittest.TestCase):
         # Context should include surrounding text
         self.assertTrue(len(matches[0].context) > len("toast"))
 
-    def test_should_label_as_tutorial(self):
-        # Any matches should result in labeling
-        matches = [
-            PatternMatch(
-                "learning", "learning", Location.TITLE, "learning", Confidence.MEDIUM
-            )
-        ]
-        self.assertTrue(PatternAnalyzer.should_label_as_tutorial(matches))
-
-        # No matches should not result in labeling
-        self.assertFalse(PatternAnalyzer.should_label_as_tutorial([]))
-
     def test_should_auto_close_multiple_matches(self):
         matches = [
             PatternMatch(
-                "tutorial", "tutorial", Location.TITLE, "tutorial", Confidence.MEDIUM
+                "tutorial", "tutorial", Location.TITLE, "tutorial", Confidence.LOW
             ),
             PatternMatch(
-                "learning", "learning", Location.TITLE, "learning", Confidence.MEDIUM
+                "learning", "learning", Location.TITLE, "learning", Confidence.LOW
             ),
         ]
         self.assertTrue(PatternAnalyzer.should_auto_close(matches))
@@ -131,14 +119,6 @@ class TestPatternAnalyzer(unittest.TestCase):
     def test_should_not_auto_close_low_confidence_single(self):
         matches = [
             PatternMatch(r"\btest\b", "test", Location.TITLE, "test", Confidence.LOW)
-        ]
-        self.assertFalse(PatternAnalyzer.should_auto_close(matches))
-
-    def test_should_not_auto_close_medium_confidence_single(self):
-        matches = [
-            PatternMatch(
-                "learning", "learning", Location.TITLE, "learning", Confidence.MEDIUM
-            )
         ]
         self.assertFalse(PatternAnalyzer.should_auto_close(matches))
 
@@ -214,8 +194,7 @@ class TestPatternAnalyzerCLI(unittest.TestCase):
         matches = PatternAnalyzer.analyze_pr("Learning Django tutorial", "")
 
         result = {
-            "has_matches": len(matches) > 0,
-            "should_label": PatternAnalyzer.should_label_as_tutorial(matches),
+            "has_matches": bool(matches),
             "should_auto_close": PatternAnalyzer.should_auto_close(matches),
             "matches": [
                 {
@@ -229,18 +208,16 @@ class TestPatternAnalyzerCLI(unittest.TestCase):
         }
 
         self.assertTrue(result["has_matches"])
-        self.assertTrue(result["should_label"])
         self.assertTrue(result["should_auto_close"])
         self.assertEqual(len(result["matches"]), 2)
 
     def test_cli_analyze_with_matches_no_autoclose(self):
-        """Test the analyze command with single medium-confidence match"""
-        # Single medium confidence should label but not auto-close
+        """Test the analyze command with single low-confidence match"""
+        # Single low confidence should label but not auto-close
         matches = PatternAnalyzer.analyze_pr("Learning Django", "This is a tutorial")
 
         result = {
-            "has_matches": len(matches) > 0,
-            "should_label": PatternAnalyzer.should_label_as_tutorial(matches),
+            "has_matches": bool(matches),
             "should_auto_close": PatternAnalyzer.should_auto_close(matches),
             "matches": [
                 {
@@ -254,7 +231,6 @@ class TestPatternAnalyzerCLI(unittest.TestCase):
         }
 
         self.assertTrue(result["has_matches"])
-        self.assertTrue(result["should_label"])
         self.assertFalse(result["should_auto_close"])
         self.assertEqual(len(result["matches"]), 1)
 
@@ -263,8 +239,7 @@ class TestPatternAnalyzerCLI(unittest.TestCase):
         matches = PatternAnalyzer.analyze_pr("Fix #99999", "")
 
         result = {
-            "has_matches": len(matches) > 0,
-            "should_label": PatternAnalyzer.should_label_as_tutorial(matches),
+            "has_matches": bool(matches),
             "should_auto_close": PatternAnalyzer.should_auto_close(matches),
             "matches": [
                 {
@@ -278,7 +253,6 @@ class TestPatternAnalyzerCLI(unittest.TestCase):
         }
 
         self.assertTrue(result["has_matches"])
-        self.assertTrue(result["should_label"])
         self.assertTrue(result["should_auto_close"])
         self.assertEqual(len(result["matches"]), 1)
 
@@ -287,8 +261,7 @@ class TestPatternAnalyzerCLI(unittest.TestCase):
         matches = PatternAnalyzer.analyze_pr("Fixed bug #12345", "Real fix")
 
         result = {
-            "has_matches": len(matches) > 0,
-            "should_label": PatternAnalyzer.should_label_as_tutorial(matches),
+            "has_matches": bool(matches),
             "should_auto_close": PatternAnalyzer.should_auto_close(matches),
             "matches": [
                 {
@@ -302,7 +275,6 @@ class TestPatternAnalyzerCLI(unittest.TestCase):
         }
 
         self.assertFalse(result["has_matches"])
-        self.assertFalse(result["should_label"])
         self.assertFalse(result["should_auto_close"])
         self.assertEqual(len(result["matches"]), 0)
 
@@ -317,7 +289,7 @@ class TestPatternAnalyzerIntegration(unittest.TestCase):
             ("Fixed #99999 -- Added toast functionality", "", True, True),
             ("My first contribution #99999", "I'm following the tutorial", True, True),
             ("Learning Django tutorial test", "", True, True),
-            # Medium confidence cases that should label but not auto-close
+            # Low confidence cases that should label but not auto-close
             ("My learning experience", "", True, False),
             ("Django tutorial walkthrough", "", True, False),
             ("Getting started with Django", "", True, False),
@@ -341,7 +313,7 @@ class TestPatternAnalyzerIntegration(unittest.TestCase):
         for title, body, should_label, should_auto_close in test_cases:
             with self.subTest(title=title):
                 matches = PatternAnalyzer.analyze_pr(title, body)
-                actual_should_label = PatternAnalyzer.should_label_as_tutorial(matches)
+                actual_should_label = bool(matches)
                 actual_should_auto_close = PatternAnalyzer.should_auto_close(matches)
 
                 self.assertEqual(
@@ -361,13 +333,6 @@ class TestPatternAnalyzerIntegration(unittest.TestCase):
             m for m in high_matches if m.confidence == Confidence.HIGH
         ]
         self.assertGreater(len(high_confidence_matches), 0)
-
-        # Medium confidence patterns
-        medium_matches = PatternAnalyzer.analyze_pr("Learning Django tutorial", "")
-        medium_confidence_matches = [
-            m for m in medium_matches if m.confidence == Confidence.MEDIUM
-        ]
-        self.assertGreater(len(medium_confidence_matches), 0)
 
         # Low confidence patterns
         low_matches = PatternAnalyzer.analyze_pr("Add test file", "")
