@@ -16,6 +16,7 @@ concurrency:
 
 permissions:
   contents: read
+  pull-requests: read  # For commenting on PRs
 
 jobs:
   windows:
@@ -52,8 +53,38 @@ jobs:
         if: github.event_name == 'pull_request'
         run: |
           pip install diff-cover
-          diff-cover .coverage --compare-branch=origin/main --fail-under=0
+          diff-cover .coverage --compare-branch=origin/main --fail-under=0 --output-file=diff-cover-report.md
         continue-on-error: true
+      - name: Comment coverage report on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            try {
+              const fs = require('fs');
+              const reportPath = 'diff-cover-report.md';
+              
+              if (fs.existsSync(reportPath)) {
+                const report = fs.readFileSync(reportPath, 'utf8');
+                
+                const comment = `## 📊 Coverage Report for Changed Files
+            
+            ${report}
+            
+            **Note:** Missing lines are shown as warnings only. Some lines may not be covered by SQLite tests as they are database-specific.`;
+                
+                github.rest.issues.createComment({
+                  issue_number: context.issue.number,
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  body: comment
+                });
+              } else {
+                console.log('No diff-cover report found');
+              }
+            } catch (error) {
+              console.error('Error creating comment:', error);
+            }
 
   javascript-tests:
     runs-on: ubuntu-latest
