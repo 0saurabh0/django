@@ -44,9 +44,13 @@ jobs:
           python -m pip install -r tests/requirements/py3.txt -e .
           python -m pip install coverage
       - name: Run tests with coverage
-        run: python -Wall tests/runtests.py -v2
+        run: |
+          $env:PYTHONPATH = "$env:GITHUB_WORKSPACE\tests;$env:PYTHONPATH"
+          python -c "import tests.sitecustomize; print('sitecustomize imported')"
+          python -Wall tests/runtests.py -v2
         env:
           COVERAGE_PROCESS_START: ${{ github.workspace }}/tests/.coveragerc
+          RUNTESTS_DIR: ${{ github.workspace }}/tests
       - name: Generate coverage report
         if: always()
         env:
@@ -77,7 +81,7 @@ jobs:
               if (fs.existsSync(path)) {
                 body = fs.readFileSync(path, 'utf8');
               }
-              const comment = `## Coverage Report for Changed Files\n\n${body}\n\n**Note:** Missing lines are warnings only. Some lines may not be covered by SQLite tests as they are database-specific.`;
+              const comment = `## 📊 Coverage Report for Changed Files\n\n${body}\n\n**Note:** Missing lines are warnings only. Some lines may not be covered by SQLite tests as they are database-specific.`;
               github.rest.issues.createComment({
                 issue_number: context.issue.number,
                 owner: context.repo.owner,
