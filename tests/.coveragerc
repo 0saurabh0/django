@@ -13,7 +13,7 @@ omit =
     */build/*
     */dist/*
     */django/conf/locale/*
-source = django
+source = ${RUNTESTS_DIR-.}/django
 
 [report]
 ignore_errors = True

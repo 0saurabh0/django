@@ -45,7 +45,7 @@ jobs:
         env:
           PYTHONPATH: ${{ github.workspace }}/tests
           COVERAGE_PROCESS_START: ${{ github.workspace }}/tests/.coveragerc
-          RUNTESTS_DIR: ${{ github.workspace }}
+          RUNTESTS_DIR: ${{ github.workspace }}/tests
         run: |
           python -Wall tests/runtests.py -v2
       - name: Generate coverage report
@@ -79,7 +79,7 @@ jobs:
                 body = fs.readFileSync(path, 'utf8');
               }
               
-              const comment = '### 📊 Coverage Report for Changed Files\n\n```diff\n' + body + '\n```\n\n> **Note:** Missing lines are shown as warnings only. Some lines may not be covered by SQLite tests as they are database-specific.\n\n---\n*Generated automatically by GitHub Actions*';
+              const comment = '### 📊 Coverage Report for Changed Files\n\n```diff\n' + body + '\n```\n\n**Note:** Missing lines are shown as warnings only. Some lines may not be covered by SQLite tests as they are database-specific.';
               
               github.rest.issues.createComment({
                 issue_number: context.issue.number,
