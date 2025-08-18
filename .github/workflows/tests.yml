@@ -47,14 +47,30 @@ jobs:
         env:
           PYTHONPATH: ${{ github.workspace }}/tests
           COVERAGE_PROCESS_START: ${{ github.workspace }}/tests/.coveragerc
-          RUNTESTS_DIR: ${{ github.workspace }}/tests
+          RUNTESTS_DIR: ${{ github.workspace }}
         run: |
           python -Wall tests/runtests.py -v2
+      - name: Debug coverage files
+        if: always()
+        run: |
+          Write-Host "=== DEBUGGING COVERAGE ==="
+          Write-Host "Current directory: $(Get-Location)"
+          Write-Host "Listing all .coverage* files:"
+          Get-ChildItem -Path . -Filter ".coverage*" -Recurse -ErrorAction SilentlyContinue | ForEach-Object { Write-Host $_.FullName }
+          Write-Host "Listing tests directory:"
+          Get-ChildItem -Path tests -ErrorAction SilentlyContinue | ForEach-Object { Write-Host $_.Name }
+          Write-Host "Environment variables:"
+          Write-Host "PYTHONPATH: $env:PYTHONPATH"
+          Write-Host "COVERAGE_PROCESS_START: $env:COVERAGE_PROCESS_START"
+          Write-Host "RUNTESTS_DIR: $env:RUNTESTS_DIR"
+        continue-on-error: true
       - name: Generate coverage report
         if: always()
         env:
           COVERAGE_RCFILE: ${{ github.workspace }}/tests/.coveragerc
         run: |
+          Write-Host "=== GENERATING COVERAGE REPORT ==="
+          Write-Host "Current directory: $(Get-Location)"
           python -m coverage combine
           python -m coverage report --show-missing
           python -m coverage xml -o tests/coverage.xml
