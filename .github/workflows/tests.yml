@@ -16,7 +16,7 @@ concurrency:
 
 permissions:
   contents: read
-  pull-requests: read  # For commenting on PRs
+  pull-requests: write
 
 jobs:
   windows:
@@ -30,7 +30,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Required for diff-cover
+          fetch-depth: 0
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -46,42 +46,40 @@ jobs:
         env:
           COVERAGE_PROCESS_START: ${{ github.workspace }}/tests/.coveragerc
       - name: Generate coverage report
+        if: always()
         run: |
-          coverage combine
-          coverage report --show-missing
+          coverage combine || true
+          coverage report --show-missing || true
+        continue-on-error: true
       - name: Run diff-cover for PRs
-        if: github.event_name == 'pull_request'
+        if: always() && github.event_name == 'pull_request'
         run: |
           pip install diff-cover
-          diff-cover .coverage --compare-branch=origin/main --fail-under=0 --output-file=diff-cover-report.md
+          if [ -f ".coverage" ]; then
+            diff-cover .coverage --compare-branch=origin/main --fail-under=0 --output-file=diff-cover-report.md || true
+          else
+            echo "No .coverage file found; skipping diff-cover" > diff-cover-report.md
+          fi
         continue-on-error: true
       - name: Comment coverage report on PR
-        if: github.event_name == 'pull_request'
+        if: always() && github.event_name == 'pull_request'
         uses: actions/github-script@v7
         with:
           script: |
             try {
               const fs = require('fs');
-              const reportPath = 'diff-cover-report.md';
-              
-              if (fs.existsSync(reportPath)) {
-                const report = fs.readFileSync(reportPath, 'utf8');
-                
-                const comment = `## 📊 Coverage Report for Changed Files
-            
-            ${report}
-            
-            **Note:** Missing lines are shown as warnings only. Some lines may not be covered by SQLite tests as they are database-specific.`;
-                
-                github.rest.issues.createComment({
-                  issue_number: context.issue.number,
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  body: comment
-                });
-              } else {
-                console.log('No diff-cover report found');
+              const path = 'diff-cover-report.md';
+              let body = 'Coverage not available.';
+              if (fs.existsSync(path)) {
+                body = fs.readFileSync(path, 'utf8');
               }
+              const comment = `## Coverage Report for Changed Files\n\n${body}\n\n**Note:** Missing lines are warnings only. Some lines may not be covered by SQLite tests as they are database-specific.`;
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: comment,
+              });
             } catch (error) {
               console.error('Error creating comment:', error);
             }
