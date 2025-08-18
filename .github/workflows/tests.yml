@@ -48,27 +48,11 @@ jobs:
           RUNTESTS_DIR: ${{ github.workspace }}
         run: |
           python -Wall tests/runtests.py -v2
-      - name: Debug coverage files
-        if: always()
-        run: |
-          Write-Host "=== DEBUGGING COVERAGE ==="
-          Write-Host "Current directory: $(Get-Location)"
-          Write-Host "Listing all .coverage* files:"
-          Get-ChildItem -Path . -Filter ".coverage*" -Recurse -ErrorAction SilentlyContinue | ForEach-Object { Write-Host $_.FullName }
-          Write-Host "Listing tests directory:"
-          Get-ChildItem -Path tests -ErrorAction SilentlyContinue | ForEach-Object { Write-Host $_.Name }
-          Write-Host "Environment variables:"
-          Write-Host "PYTHONPATH: $env:PYTHONPATH"
-          Write-Host "COVERAGE_PROCESS_START: $env:COVERAGE_PROCESS_START"
-          Write-Host "RUNTESTS_DIR: $env:RUNTESTS_DIR"
-        continue-on-error: true
       - name: Generate coverage report
         if: always()
         env:
           COVERAGE_RCFILE: ${{ github.workspace }}/tests/.coveragerc
         run: |
-          Write-Host "=== GENERATING COVERAGE REPORT ==="
-          Write-Host "Current directory: $(Get-Location)"
           python -m coverage combine
           python -m coverage report --show-missing
           python -m coverage xml -o tests/coverage.xml
@@ -90,11 +74,13 @@ jobs:
             try {
               const fs = require('fs');
               const path = 'tests/diff-cover-report.md';
-              let body = 'Coverage not available.';
+              let body = 'No coverage data available.';
               if (fs.existsSync(path)) {
                 body = fs.readFileSync(path, 'utf8');
               }
-              const comment = `## 📊 Coverage Report for Changed Files\n\n${body}\n\n**Note:** Missing lines are warnings only. Some lines may not be covered by SQLite tests as they are database-specific.`;
+              
+              const comment = '### 📊 Coverage Report for Changed Files\n\n```diff\n' + body + '\n```\n\n> **Note:** Missing lines are shown as warnings only. Some lines may not be covered by SQLite tests as they are database-specific.\n\n---\n*Generated automatically by GitHub Actions*';
+              
               github.rest.issues.createComment({
                 issue_number: context.issue.number,
                 owner: context.repo.owner,
