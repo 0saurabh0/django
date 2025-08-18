@@ -77,7 +77,7 @@ jobs:
         if: always() && github.event_name == 'pull_request'
         run: |
           if (Test-Path 'tests/coverage.xml') {
-            python -m diff_cover tests/coverage.xml --compare-branch=origin/main --fail-under=0 --output-file tests/diff-cover-report.md
+            diff-cover tests/coverage.xml --compare-branch=origin/main --fail-under=0 --output-file tests/diff-cover-report.md
           } else {
             Set-Content -Path tests/diff-cover-report.md -Value 'No coverage.xml found; skipping diff-cover.'
           }
