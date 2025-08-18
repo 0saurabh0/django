@@ -30,7 +30,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 0  # Required for diff-cover
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -47,19 +47,21 @@ jobs:
           COVERAGE_PROCESS_START: ${{ github.workspace }}/tests/.coveragerc
       - name: Generate coverage report
         if: always()
+        env:
+          COVERAGE_RCFILE: ${{ github.workspace }}/tests/.coveragerc
         run: |
-          coverage combine || true
-          coverage report --show-missing || true
+          python -m coverage combine
+          python -m coverage report --show-missing
+          python -m coverage xml -o tests/coverage.xml
         continue-on-error: true
       - name: Run diff-cover for PRs
         if: always() && github.event_name == 'pull_request'
         run: |
-          pip install diff-cover
-          if [ -f ".coverage" ]; then
-            diff-cover .coverage --compare-branch=origin/main --fail-under=0 --output-file=diff-cover-report.md || true
-          else
-            echo "No .coverage file found; skipping diff-cover" > diff-cover-report.md
-          fi
+          if (Test-Path 'tests/coverage.xml') {
+            python -m diff_cover tests/coverage.xml --compare-branch=origin/main --fail-under=0 --output-file tests/diff-cover-report.md
+          } else {
+            Set-Content -Path tests/diff-cover-report.md -Value 'No coverage.xml found; skipping diff-cover.'
+          }
         continue-on-error: true
       - name: Comment coverage report on PR
         if: always() && github.event_name == 'pull_request'
@@ -68,7 +70,7 @@ jobs:
           script: |
             try {
               const fs = require('fs');
-              const path = 'diff-cover-report.md';
+              const path = 'tests/diff-cover-report.md';
               let body = 'Coverage not available.';
               if (fs.existsSync(path)) {
                 body = fs.readFileSync(path, 'utf8');
