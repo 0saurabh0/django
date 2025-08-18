@@ -45,7 +45,7 @@ jobs:
         env:
           PYTHONPATH: ${{ github.workspace }}/tests
           COVERAGE_PROCESS_START: ${{ github.workspace }}/tests/.coveragerc
-          RUNTESTS_DIR: ${{ github.workspace }}/tests
+          RUNTESTS_DIR: ${{ github.workspace }}
         run: |
           python -Wall tests/runtests.py -v2
       - name: Generate coverage report
