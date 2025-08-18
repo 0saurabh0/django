@@ -20,3 +20,4 @@ tblib >= 3.0.0
 tzdata
 colorama >= 0.4.6; sys_platform == 'win32'
 diff-cover >= 8.0.0
+coverage[toml]
