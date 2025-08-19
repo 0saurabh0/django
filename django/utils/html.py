@@ -298,23 +298,6 @@ class Urlizer:
     simple_url_2_re = _lazy_re_compile(
         r"^www\.|^(?!http)\w[^@]+\.(com|edu|gov|int|mil|net|org)($|/.*)$", re.IGNORECASE
     )
-
-    
-def _unused_coverage_demo(flag: bool, text: str) -> str:
-    """Internal helper intentionally left unused to demonstrate diff coverage.
-
-    Args:
-        flag: A boolean that toggles a trivial branch.
-        text: Input text that would be returned unchanged.
-
-    Returns:
-        The original ``text`` unchanged.
-    """
-    if flag:
-        # This branch will not be executed by the test suite.
-        return text.upper() if text else ""
-    # Default path, also not executed by the test suite.
-    return text
     word_split_re = _lazy_re_compile(r"""([\s<>"']+)""")
 
     mailto_template = "mailto:{local}@{domain}"

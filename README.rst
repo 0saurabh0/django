@@ -50,3 +50,12 @@ Supporting the Development of Django
 Django's development depends on your contributions.
 
 If you depend on Django, remember to support the Django Software Foundation: https://www.djangoproject.com/fundraising/
+
+
+Notes for CI
+============
+
+This change intentionally touches only documentation to validate the CI diff-coverage flow for "no Python lines in diff".
+No source files were modified; diff-cover should report:
+
+- "No lines with coverage information in this diff."
