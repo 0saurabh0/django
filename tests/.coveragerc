@@ -1,43 +1,16 @@
 [run]
 branch = True
 concurrency = multiprocessing,thread
-data_file = ${RUNTESTS_DIR-.}/.coverage
+data_file = ${RUNTESTS_DIR-.}/.coverages/.coverage
 omit =
     */django/utils/autoreload.py
-    */tests/*
-    */migrations/*
-    */site-packages/*
-    */venv/*
-    */env/*
-    */__pycache__/*
-    */build/*
-    */dist/*
-    */django/conf/locale/*
-source = ${RUNTESTS_DIR-.}/django
+source = django
 
 [report]
 ignore_errors = True
 omit =
     */django/conf/locale/*
     */tests/*
-    */migrations/*
-    */site-packages/*
-    */venv/*
-    */env/*
-    */__pycache__/*
-    */build/*
-    */dist/*
-exclude_lines =
-    pragma: no cover
-    def __repr__
-    if self.debug:
-    if settings.DEBUG
-    raise AssertionError
-    raise NotImplementedError
-    if 0:
-    if __name__ == .__main__.:
-    class .*\bProtocol\):
-    @(abc\.)?abstractmethod
 
 [html]
 directory = coverage_html
