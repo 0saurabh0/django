@@ -5,8 +5,8 @@ These tests ensure the sample functions are fully covered for demonstration.
 
 from django.test import SimpleTestCase
 from django.utils.sample_utils import (
-    sample_string_processor,
     sample_number_validator,
+    sample_string_processor,
     sample_string_processor_lazy,
 )
 
