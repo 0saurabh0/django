@@ -35,7 +35,11 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip setuptools wheel
-          python -m pip install -r tests/requirements/py3.txt -e .
+          # Install Django first to avoid dependency conflicts
+          python -m pip install -e .
+          # Install test requirements, skipping problematic packages on Linux
+          python -m pip install -r tests/requirements/py3.txt --no-deps
+          # Install coverage tools
           python -m pip install 'coverage[toml]' diff-cover
 
       - name: Run tests with coverage
@@ -47,7 +51,7 @@ jobs:
           python -Wall tests/runtests.py -v2
 
       - name: Generate coverage report
-        if: always()
+        if: success()
         env:
           COVERAGE_RCFILE: ${{ github.workspace }}/tests/.coveragerc
           RUNTESTS_DIR: ${{ github.workspace }}/tests
@@ -57,7 +61,7 @@ jobs:
           python -m coverage xml -o tests/coverage.xml
 
       - name: Run diff-cover
-        if: always()
+        if: success()
         run: |
           if [ -f tests/coverage.xml ]; then
             diff-cover tests/coverage.xml --compare-branch=origin/main --fail-under=0 > tests/diff-cover-report.md || true
@@ -66,7 +70,7 @@ jobs:
           fi
 
       - name: Post/update PR comment
-        if: always() && github.event_name == 'pull_request'
+        if: success() && github.event_name == 'pull_request'
         uses: actions/github-script@v7
         with:
           script: |
