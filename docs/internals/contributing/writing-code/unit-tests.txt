@@ -433,43 +433,8 @@ mind:
   all edge cases are handled. During review, assess test quality beyond just
   coverage numbers.
 
-* **Jenkins coverage:** In addition to the GitHub Actions coverage check,
-  mergers can trigger more comprehensive coverage analysis using Jenkins,
-  which tests across multiple database backends and Python versions. See the
-  `CI wiki page`_ for instructions.
 
-.. _CI wiki page: https://code.djangoproject.com/wiki/CI
-
-**When the coverage job runs:**
-
-The coverage CI job is triggered on pull requests when changes are made to:
-
-* Python files in the Django codebase (``django/**/*.py``)
-* Python files in the test suite (``tests/**/*.py``)
-
-The job is **not** triggered for changes to other file types, including:
-
-* Documentation files (``docs/**``)
-* Markdown files (``**/*.md``)
-* CSS, JavaScript, or HTML files
-* Configuration files (``pyproject.toml``, ``tox.ini``, etc.)
-* Other non-Python files
-
-This focused approach ensures the coverage check runs when source code or tests
-change, while avoiding unnecessary runs for documentation, styling, or
-configuration-only changes.
-
-**For reviewers:**
-
-When reviewing a pull request with missing coverage:
-
-* Check if the missing coverage is due to database or platform-specific code
-* Verify that the code change itself is appropriate and necessary
-* Assess whether the existing tests adequately exercise the new code, even if
-  coverage numbers are not 100%
-* Request additional tests if critical code paths are not being tested
-
-Missing coverage should be considered a warning rather than a blocker, and
+Missing coverage should be considered a warning rather than a blocker and
 should be evaluated in context.
 
 .. _contrib-apps:
