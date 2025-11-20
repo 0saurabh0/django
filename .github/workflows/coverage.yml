@@ -1,11 +1,10 @@
-name: Coverage (Trial)
+name: Coverage
 
 on:
   pull_request_target:
-    paths-ignore:
-      - 'docs/**'
-      - '**/*.md'
-  workflow_dispatch:
+    paths:
+      - 'django/**/*.py'
+      - 'tests/**/*.py'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -76,7 +75,7 @@ jobs:
             if (fs.existsSync(reportPath)) {
               body = fs.readFileSync(reportPath, 'utf8');
             }
-            const commentBody = '### 📊 Coverage Report for Changed Files\n\n```\n' + body + '\n```\n\n**Note:** Missing lines are warnings only. Some lines may not be covered by SQLite tests as they are database-specific.';
+            const commentBody = '### 📊 Coverage Report for Changed Files\n\n```\n' + body + '\n```\n\n**Note:** Missing lines are warnings only. Some lines may not be covered by SQLite tests as they are database-specific.\n\nFor more information about code coverage on pull requests, see the [contributing documentation](https://docs.djangoproject.com/en/dev/internals/contributing/writing-code/unit-tests/#code-coverage-on-pull-requests).';
 
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
@@ -99,4 +98,3 @@ jobs:
               issue_number: context.issue.number,
               body: commentBody,
             });
-
