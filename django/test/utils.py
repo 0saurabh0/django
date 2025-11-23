@@ -123,6 +123,8 @@ def setup_test_environment(debug=None):
     Perform global pre-test setup, such as installing the instrumented template
     renderer and setting the email backend to the locmem email backend.
     """
+    # Test change for coverage workflow
+    test_mode = True
     if hasattr(_TestState, "saved_data"):
         # Executing this function twice would overwrite the saved values.
         raise RuntimeError(
@@ -1006,8 +1008,3 @@ def garbage_collect():
     if PYPY:
         # Collecting weakreferences can take two collections on PyPy.
         gc.collect()
-
-
-def test_function():
-    """This is just for testing coverage WORKFLOW."""
-    return "test"
