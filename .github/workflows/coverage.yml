@@ -18,7 +18,7 @@ permissions:
 
 jobs:
   diff-coverage:
-    if: github.repository == 'django/django'
+    if: github.repository == 'django/django' || github.repository == '0saurabh0/django'
     name: Diff Coverage (Windows)
     runs-on: windows-latest
     steps:

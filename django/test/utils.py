@@ -1006,3 +1006,7 @@ def garbage_collect():
     if PYPY:
         # Collecting weakreferences can take two collections on PyPy.
         gc.collect()
+
+def test_function():
+    """This is just for testing coverage workflow."""
+    return "test"
