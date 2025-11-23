@@ -1009,5 +1009,5 @@ def garbage_collect():
 
 
 def test_function():
-    """This is just for testing coverage workflow."""
+    """This is just for testing coverage WORKFLOW."""
     return "test"
