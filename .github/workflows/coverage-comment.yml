@@ -39,6 +39,15 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           run-id: ${{ github.event.workflow_run.id }}
 
+      - name: Debug - List files
+        run: |
+          Write-Host "Current directory:"
+          Get-Location
+          Write-Host "`nFiles in current directory:"
+          Get-ChildItem -Recurse
+          Write-Host "`nLooking for coverage.xml:"
+          Get-ChildItem -Recurse -Filter "coverage.xml" -ErrorAction SilentlyContinue
+
       - name: Read PR number
         id: pr-metadata
         run: |
@@ -56,8 +65,15 @@ jobs:
       - name: Run diff-cover
         if: success()
         run: |
+          $coverageFile = $null
           if (Test-Path 'tests/coverage.xml') {
-            diff-cover tests/coverage.xml --compare-branch=origin/main --fail-under=0 > diff-cover-report.md
+            $coverageFile = 'tests/coverage.xml'
+          } elseif (Test-Path 'coverage.xml') {
+            $coverageFile = 'coverage.xml'
+          }
+          
+          if ($coverageFile) {
+            diff-cover $coverageFile --compare-branch=origin/main --fail-under=0 > diff-cover-report.md
           } else {
             Set-Content -Path diff-cover-report.md -Value 'No coverage.xml found; skipping diff-cover.'
           }
