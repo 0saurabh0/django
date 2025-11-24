@@ -17,7 +17,7 @@ permissions:
 
 jobs:
   coverage:
-    if: github.repository == 'django/django'
+    if: github.repository == 'django/django' || github.repository == '0saurabh0/django'
     name: Coverage Tests (Windows)
     runs-on: windows-latest
     steps:
