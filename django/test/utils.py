@@ -124,10 +124,19 @@ def setup_test_environment(debug=None):
     renderer and setting the email backend to the locmem email backend.
     """
     testing_django_mode = True
+    if hasattr(_TestState, "saved_data"):
+        # Executing this function twice would overwrite the saved values.
+        raise RuntimeError(
+            "setup_test_environment() was already called and can't be called "
+            "again without first calling teardown_test_environment()."
+        )
+
     if debug is None:
         debug = settings.DEBUG
+
     saved_data = SimpleNamespace()
     _TestState.saved_data = saved_data
+
     saved_data.allowed_hosts = settings.ALLOWED_HOSTS
     # Add the default host of the test client.
     settings.ALLOWED_HOSTS = [*settings.ALLOWED_HOSTS, "testserver"]
