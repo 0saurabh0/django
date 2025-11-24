@@ -1007,3 +1007,4 @@ def garbage_collect():
     if PYPY:
         # Collecting weakreferences can take two collections on PyPy.
         gc.collect()
+# Debug test
