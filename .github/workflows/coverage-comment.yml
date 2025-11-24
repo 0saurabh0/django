@@ -39,15 +39,6 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           run-id: ${{ github.event.workflow_run.id }}
 
-      - name: Debug - List files
-        run: |
-          Write-Host "Current directory:"
-          Get-Location
-          Write-Host "`nFiles in current directory:"
-          Get-ChildItem -Recurse
-          Write-Host "`nLooking for coverage.xml:"
-          Get-ChildItem -Recurse -Filter "coverage.xml" -ErrorAction SilentlyContinue
-
       - name: Read PR number
         id: pr-metadata
         run: |
@@ -65,15 +56,8 @@ jobs:
       - name: Run diff-cover
         if: success()
         run: |
-          $coverageFile = $null
-          if (Test-Path 'tests/coverage.xml') {
-            $coverageFile = 'tests/coverage.xml'
-          } elseif (Test-Path 'coverage.xml') {
-            $coverageFile = 'coverage.xml'
-          }
-          
-          if ($coverageFile) {
-            diff-cover $coverageFile --compare-branch=origin/main --fail-under=0 > diff-cover-report.md
+          if (Test-Path 'coverage.xml') {
+            diff-cover coverage.xml --compare-branch=origin/main --fail-under=0 > diff-cover-report.md
           } else {
             Set-Content -Path diff-cover-report.md -Value 'No coverage.xml found; skipping diff-cover.'
           }
@@ -90,7 +74,7 @@ jobs:
             if (fs.existsSync(reportPath)) {
               body = fs.readFileSync(reportPath, 'utf8');
             }
-            const commentBody = '### 📊 Coverage Report for Changed Files\n\n```\n-------------\n\n' + body + '\n\n-------------\n```\n\n**Note:** Missing lines are warnings only. Some lines may not be covered by SQLite tests as they are database-specific.\n\nFor more information about code coverage on pull requests, see the [contributing documentation](https://docs.djangoproject.com/en/dev/internals/contributing/writing-code/unit-tests/#code-coverage-on-pull-requests).';
+            const commentBody = '### 📊 Coverage Report for Changed Files\n\n```\n' + body + '\n```\n\n**Note:** Missing lines are warnings only. Some lines may not be covered by SQLite tests as they are database-specific.\n\nFor more information about code coverage on pull requests, see the [contributing documentation](https://docs.djangoproject.com/en/dev/internals/contributing/writing-code/unit-tests/#code-coverage-on-pull-requests).';
 
             const prNumber = parseInt(process.env.PR_NUMBER);
             
