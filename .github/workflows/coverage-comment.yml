@@ -19,11 +19,20 @@ jobs:
     name: Post Coverage Comment
     runs-on: windows-latest
     steps:
-      - name: Checkout main branch
+      - name: Checkout repository  
         uses: actions/checkout@v5
         with:
-          ref: main
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0
           persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.14'
+
+      - name: Install diff-cover
+        run: pip install diff-cover
 
       - name: Download coverage data
         uses: actions/download-artifact@v4
@@ -44,14 +53,6 @@ jobs:
         run: |
           $pr_number = Get-Content pr_number.txt
           echo "pr_number=$pr_number" >> $env:GITHUB_OUTPUT
-
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: '3.14'
-
-      - name: Install diff-cover
-        run: pip install diff-cover
 
       - name: Run diff-cover
         if: success()
@@ -100,4 +101,3 @@ jobs:
               issue_number: prNumber,
               body: commentBody,
             });
-
