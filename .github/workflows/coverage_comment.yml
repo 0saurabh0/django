@@ -21,22 +21,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
-      - name: Debug workflow_run context
-        env:
-          EVENT: ${{ github.event.workflow_run.event }}
-          CONCLUSION: ${{ github.event.workflow_run.conclusion }}
-          REPOSITORY: ${{ github.repository }}
-          RUN_ID: ${{ github.event.workflow_run.id }}
-          PR_NUM: ${{ github.event.workflow_run.pull_requests[0].number }}
-        run: |
-          echo "=== DEBUG: workflow_run context ==="
-          echo "Event: $EVENT"
-          echo "Conclusion: $CONCLUSION"
-          echo "Repository: $REPOSITORY"
-          echo "Run ID: $RUN_ID"
-          echo "PR Number: $PR_NUM"
-          echo "Artifact name: diff-coverage-report-$PR_NUM"
-          
       - name: Download diff coverage report
         uses: actions/download-artifact@v4
         with:
@@ -44,83 +28,45 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           run-id: ${{ github.event.workflow_run.id }}
 
-      - name: Verify downloaded artifact
-        run: |
-          echo "=== DEBUG: Checking downloaded files ==="
-          ls -la
-          if [ -f "diff-cover-report.md" ]; then
-            echo "✓ diff-cover-report.md found"
-            echo "=== DEBUG: Report content ==="
-            cat diff-cover-report.md
-          else
-            echo "✗ diff-cover-report.md NOT found"
-          fi
-
       - name: Post/update PR comment
         env:
           PR_NUMBER: ${{ github.event.workflow_run.pull_requests[0].number }}
         uses: actions/github-script@v8
         with:
           script: |
-            console.log('=== DEBUG: Starting comment script ===');
-            
             const fs = require('fs');
             const reportPath = 'diff-cover-report.md';
             let body = 'No coverage data available.';
-            
-            console.log(`Checking for report at: ${reportPath}`);
             if (fs.existsSync(reportPath)) {
-              console.log('✓ Report file found');
               body = fs.readFileSync(reportPath, 'utf8');
-              console.log(`Report content length: ${body.length} chars`);
-            } else {
-              console.log('✗ Report file NOT found');
             }
-            
             const commentBody = '### 📊 Coverage Report for Changed Files\n\n```\n' + body + '\n```\n\n**Note:** Missing lines are warnings only. Some lines may not be covered by SQLite tests as they are database-specific.\n\nFor more information about code coverage on pull requests, see the [contributing documentation](https://docs.djangoproject.com/en/dev/internals/contributing/writing-code/unit-tests/#code-coverage-on-pull-requests).';
 
             const prNumber = parseInt(process.env.PR_NUMBER);
-            console.log(`PR_NUMBER env var: ${process.env.PR_NUMBER}`);
-            console.log(`Parsed PR number: ${prNumber}`);
-            
             if (isNaN(prNumber)) {
-              console.error('✗ PR number is NaN!');
               core.setFailed('PR number is not available or invalid.');
               return;
             }
             
-            console.log(`=== DEBUG: Fetching comments for PR #${prNumber} ===`);
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: prNumber,
             });
-            console.log(`Found ${comments.length} existing comments`);
             
-            let deletedCount = 0;
             for (const c of comments) {
               if ((c.body || '').includes('📊 Coverage Report for Changed Files')) {
-                console.log(`Deleting old coverage comment (ID: ${c.id})`);
                 await github.rest.issues.deleteComment({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
                   comment_id: c.id,
                 });
-                deletedCount++;
               }
             }
-            console.log(`Deleted ${deletedCount} old coverage comments`);
 
-            console.log('=== DEBUG: Creating new comment ===');
-            try {
-              const result = await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: prNumber,
-                body: commentBody,
-              });
-              console.log(`✓ Comment created successfully (ID: ${result.data.id})`);
-            } catch (error) {
-              console.error('✗ Failed to create comment:', error);
-              throw error;
-            }
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              body: commentBody,
+            });
