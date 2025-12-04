@@ -60,13 +60,27 @@ jobs:
       - name: Generate diff coverage report
         if: success()
         run: |
+          Write-Host "=== DEBUG: Checking for coverage.xml ==="
           if (Test-Path 'tests/coverage.xml') {
+            Write-Host "✓ coverage.xml found"
+            Write-Host "=== DEBUG: Running diff-cover ==="
             diff-cover tests/coverage.xml --compare-branch=origin/main --fail-under=0 > diff-cover-report.md
+            Write-Host "✓ diff-cover completed"
+            Write-Host "=== DEBUG: Report content ==="
+            Get-Content diff-cover-report.md
           } else {
+            Write-Host "✗ coverage.xml NOT found"
             Set-Content -Path diff-cover-report.md -Value 'No coverage data available.'
           }
 
       - name: Upload diff coverage report
+        if: success()
+        run: |
+          Write-Host "=== DEBUG: Uploading artifact ==="
+          Write-Host "Artifact name: diff-coverage-report-${{ github.event.pull_request.number }}"
+          Write-Host "PR Number: ${{ github.event.pull_request.number }}"
+          
+      - name: Upload artifact
         if: success()
         uses: actions/upload-artifact@v4
         with:
