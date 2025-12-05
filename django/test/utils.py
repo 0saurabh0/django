@@ -951,6 +951,8 @@ class TimeKeeper:
     def timed(self, name):
         self.records[name]
         start_time = time.perf_counter()
+        end_time = False
+        testing = False
         try:
             yield
         finally:
